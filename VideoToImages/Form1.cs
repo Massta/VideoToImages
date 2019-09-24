@@ -16,9 +16,11 @@ namespace VideoToImages
 {
     public partial class Form1 : Form
     {
+        public bool IsValidFile { get; set; } = false;
         public Form1()
         {
             InitializeComponent();
+            UpdateVideoInfo();
         }
 
         private void Button1_Click(object sender, EventArgs e)
@@ -30,12 +32,65 @@ namespace VideoToImages
             }
         }
 
+        private void TextBox1_TextChanged(object sender, EventArgs e)
+        {
+            UpdateVideoInfo();
+        }
+
+        private void Button3_Click(object sender, EventArgs e)
+        {
+
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+            {
+                string sSelectedPath = folderBrowserDialog1.SelectedPath;
+                textBox2.Text = sSelectedPath;
+            }
+        }
+
         private void Button2_Click(object sender, EventArgs e)
         {
+            if (!IsValidFile)
+            {
+                return;
+            }
             var filePath = textBox1.Text;
+            var targetPath = textBox2.Text;
+            button2.Text = "Working...";
+            button2.Enabled = false;
+            CaptureFrames(filePath, targetPath, 0, 10);
+            button2.Text = "Generate images";
+            button2.Enabled = true;
+        }
+
+        public void UpdateVideoInfo()
+        {
+            var filePath = textBox1.Text;
+            if (!File.Exists(filePath))
+            {
+                LabelIsMp4.Text = "-";
+                LabelResolution.Text = "-";
+                return;
+            }
+
             var fi = new FileInfo(filePath);
-            var folderPath = fi.DirectoryName;
-            CaptureFrames(filePath, Path.Combine(folderPath, Path.GetFileNameWithoutExtension(filePath)));
+            if (fi.Extension.ToLower() != ".mp4")
+            {
+                LabelIsMp4.Text = "-";
+                LabelResolution.Text = "-";
+                return;
+            }
+            LabelIsMp4.Text = "+";
+
+            using (var engine = new Engine())
+            {
+                var mp4 = new MediaFile { Filename = filePath };
+                engine.GetMetadata(mp4);
+                LabelResolution.Text = mp4.Metadata.VideoData.FrameSize + "@" + mp4.Metadata.VideoData.Fps + " fps";
+            }
+
+            textBox2.Text = Path.Combine(fi.DirectoryName, Path.GetFileNameWithoutExtension(filePath));
+            folderBrowserDialog1.SelectedPath = textBox2.Text;
+            IsValidFile = true;
         }
 
         public void CaptureFrames(string filePath, string destinationPath, double startIndex = 0, double? stopIndex = null, double stepSize = 1)
@@ -57,8 +112,14 @@ namespace VideoToImages
 
                 for (int i = 0; startIndex < stopIndex; startIndex += stepSize, i++)
                 {
-                    var options = new ConversionOptions { Seek = TimeSpan.FromSeconds(startIndex) };
-                    var outputFile = new MediaFile { Filename = Path.Combine(destinationPath, $"{fileName}-{i}.jpg") };
+                    var options = new ConversionOptions
+                    {
+                        Seek = TimeSpan.FromSeconds(startIndex)
+                    };
+                    var outputFile = new MediaFile
+                    {
+                        Filename = Path.Combine(destinationPath, $"{fileName}-{i}.jpg")
+                    };
                     engine.GetThumbnail(mp4, outputFile, options);
                 }
             }
