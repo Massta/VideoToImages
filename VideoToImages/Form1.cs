@@ -55,11 +55,42 @@ namespace VideoToImages
             }
             var filePath = textBox1.Text;
             var targetPath = textBox2.Text;
+
+            double startValue = 0;
+            if (double.TryParse(TextBoxStart.Text, out double startResult))
+            {
+                startValue = startResult;
+            }
+            double? stopValue = null;
+            if (double.TryParse(TextBoxEnd.Text, out double stopResult))
+            {
+                stopValue = stopResult;
+            }
+            double stepValue = 1;
+            if (double.TryParse(TextBoxStep.Text, out double stepResult))
+            {
+                stepValue = stepResult;
+            }
             button2.Text = "Working...";
             button2.Enabled = false;
-            CaptureFrames(filePath, targetPath, 0, 10);
+            CaptureFrames(filePath, targetPath, startValue, stopValue, stepValue);
             button2.Text = "Generate images";
             button2.Enabled = true;
+        }
+
+        private void TextBoxStart_TextChanged(object sender, EventArgs e)
+        {
+            UpdateVideoInfo();
+        }
+
+        private void TextBoxEnd_TextChanged(object sender, EventArgs e)
+        {
+            UpdateVideoInfo();
+        }
+
+        private void TextBoxStep_TextChanged(object sender, EventArgs e)
+        {
+            UpdateVideoInfo();
         }
 
         public void UpdateVideoInfo()
@@ -70,6 +101,8 @@ namespace VideoToImages
                 LabelIsMp4.Text = "-";
                 LabelResolution.Text = "-";
                 LabelDuration.Text = "-";
+                TextBoxEnd.Text = null;
+                LabelImageAmount.Text = "The chosen setup will generate - images";
                 return;
             }
 
@@ -79,6 +112,8 @@ namespace VideoToImages
                 LabelIsMp4.Text = "-";
                 LabelResolution.Text = "-";
                 LabelDuration.Text = "-";
+                TextBoxEnd.Text = null;
+                LabelImageAmount.Text = "The chosen setup will generate - images";
                 return;
             }
             LabelIsMp4.Text = "+";
@@ -89,11 +124,25 @@ namespace VideoToImages
                 engine.GetMetadata(mp4);
                 LabelResolution.Text = mp4.Metadata.VideoData.FrameSize + "@" + mp4.Metadata.VideoData.Fps + " fps";
                 LabelDuration.Text = mp4.Metadata.Duration.TotalSeconds + "s";
+                TextBoxEnd.Text = mp4.Metadata.Duration.TotalSeconds.ToString();
+                LabelImageAmount.Text = $"The chosen setup will generate {GetImageAmount()} images";
             }
 
             textBox2.Text = Path.Combine(fi.DirectoryName, Path.GetFileNameWithoutExtension(filePath));
             folderBrowserDialog1.SelectedPath = textBox2.Text;
             IsValidFile = true;
+        }
+
+        public int? GetImageAmount()
+        {
+            var start = TextBoxStart.Text.ToDouble();
+            var end = TextBoxEnd.Text.ToDouble();
+            var step = TextBoxStep.Text.ToDouble();
+            if (start == null || end == null || step == null)
+            {
+                return null;
+            }
+            return (int)Math.Floor((end.Value - start.Value) / step.Value);
         }
 
         public void CaptureFrames(string filePath, string destinationPath, double startIndex = 0, double? stopIndex = null, double stepSize = 1)
@@ -112,6 +161,8 @@ namespace VideoToImages
                 {
                     stopIndex = mp4.Metadata.Duration.TotalSeconds;
                 }
+
+                stepSize = Math.Max(stepSize, 0.1d);
 
                 for (int i = 0; startIndex < stopIndex; startIndex += stepSize, i++)
                 {
