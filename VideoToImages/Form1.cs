@@ -69,6 +69,7 @@ namespace VideoToImages
             {
                 LabelIsMp4.Text = "-";
                 LabelResolution.Text = "-";
+                LabelDuration.Text = "-";
                 return;
             }
 
@@ -77,6 +78,7 @@ namespace VideoToImages
             {
                 LabelIsMp4.Text = "-";
                 LabelResolution.Text = "-";
+                LabelDuration.Text = "-";
                 return;
             }
             LabelIsMp4.Text = "+";
@@ -86,6 +88,7 @@ namespace VideoToImages
                 var mp4 = new MediaFile { Filename = filePath };
                 engine.GetMetadata(mp4);
                 LabelResolution.Text = mp4.Metadata.VideoData.FrameSize + "@" + mp4.Metadata.VideoData.Fps + " fps";
+                LabelDuration.Text = mp4.Metadata.Duration.TotalSeconds + "s";
             }
 
             textBox2.Text = Path.Combine(fi.DirectoryName, Path.GetFileNameWithoutExtension(filePath));
