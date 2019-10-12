@@ -11,6 +11,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using YoutubeExplode;
+using YoutubeExplode.Models.MediaStreams;
 
 namespace VideoToImages
 {
@@ -177,6 +179,73 @@ namespace VideoToImages
                     engine.GetThumbnail(mp4, outputFile, options);
                 }
             }
+        }
+
+        private async void Button4_ClickAsync(object sender, EventArgs e)
+        {
+            var links = textBox3.Lines;
+            if (links == null || !links.Any())
+            {
+                return;
+            }
+            var firstLink = links[0];
+            var linkParts = firstLink.Split("?v=".ToCharArray());
+            if (linkParts.Length < 2)
+            {
+                return;
+            }
+            var ytId = linkParts[3];
+
+            var client = new YoutubeClient();
+            var streamInfoSet = await client.GetVideoMediaStreamInfosAsync(ytId);
+            var selectedStreamInfo = comboBox1.SelectedText;
+            var streamInfo = streamInfoSet.Video
+               .Where(s => s.Container == YoutubeExplode.Models.MediaStreams.Container.Mp4)
+               .Where(s => $"{s.Resolution.Height.ToString()}p {s.Framerate} fps" == selectedStreamInfo)
+               .FirstOrDefault();
+            if (streamInfo == null)
+            {
+                return;
+            }
+
+            // Get file extension based on stream's container
+            var ext = streamInfo.Container.GetFileExtension();
+
+            // Download stream to file
+            Progress<double> testProgress = new Progress<double>(HasProgress);
+            await client.DownloadMediaStreamAsync(streamInfo, ytId + ext, progress: testProgress);
+        }
+
+        public void HasProgress(double input)
+        {
+            label10.Text = input.ToString();
+        }
+
+        private async void TextBox3_TextChangedAsync(object sender, EventArgs e)
+        {
+            var links = textBox3.Lines;
+            if (links == null || !links.Any())
+            {
+                return;
+            }
+            var firstLink = links[0];
+            var linkParts = firstLink.Split("?v=".ToCharArray());
+            if (linkParts.Length < 2)
+            {
+                return;
+            }
+            var ytId = linkParts[3];
+
+            var client = new YoutubeClient();
+            var streamInfoSet = await client.GetVideoMediaStreamInfosAsync(ytId);
+            if (streamInfoSet == null)
+            {
+                return;
+            }
+            comboBox1.Items.AddRange(streamInfoSet.Video
+                .Where(v => v.Container == YoutubeExplode.Models.MediaStreams.Container.Mp4)
+                .Select(v => $"{v.Resolution.Height.ToString()}p {v.Framerate} fps").ToArray());
+            comboBox1.SelectedIndex = 0;
         }
     }
 }
