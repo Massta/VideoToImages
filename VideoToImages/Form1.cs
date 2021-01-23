@@ -12,7 +12,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using YoutubeExplode;
-using YoutubeExplode.Models.MediaStreams;
 
 namespace VideoToImages
 {
@@ -197,11 +196,12 @@ namespace VideoToImages
             var ytId = linkParts[3];
 
             var client = new YoutubeClient();
-            var streamInfoSet = await client.GetVideoMediaStreamInfosAsync(ytId);
-            var selectedStreamInfo = comboBox1.SelectedText;
-            var streamInfo = streamInfoSet.Video
-               .Where(s => s.Container == YoutubeExplode.Models.MediaStreams.Container.Mp4)
-               .Where(s => $"{s.Resolution.Height.ToString()}p {s.Framerate} fps" == selectedStreamInfo)
+            var streamManifest = await client.Videos.Streams.GetManifestAsync(ytId);
+            string selectedStreamInfo = comboBox1.SelectedItem.ToString();
+            var fullVideoInfo = streamManifest.GetVideoOnly().ToList();
+            var streamInfo = fullVideoInfo
+               .Where(s => s.Container == YoutubeExplode.Videos.Streams.Container.Mp4)
+               .Where(s => $"{s.Resolution.Height.ToString()}p {s.Framerate}" == selectedStreamInfo)
                .FirstOrDefault();
             if (streamInfo == null)
             {
@@ -209,16 +209,20 @@ namespace VideoToImages
             }
 
             // Get file extension based on stream's container
-            var ext = streamInfo.Container.GetFileExtension();
+            var ext = streamInfo.Container.Name;
 
             // Download stream to file
-            Progress<double> testProgress = new Progress<double>(HasProgress);
-            await client.DownloadMediaStreamAsync(streamInfo, ytId + ext, progress: testProgress);
+            Progress<double> progress = new Progress<double>(HasProgress);
+            if (!Directory.Exists("Downloads"))
+            {
+                Directory.CreateDirectory("Downloads");
+            }
+            await client.Videos.Streams.DownloadAsync(streamInfo, $"Downloads\\{ytId}.{ext}", progress: progress);
         }
 
         public void HasProgress(double input)
         {
-            label10.Text = input.ToString();
+            label10.Text = $"{(input * 100):n2}%";
         }
 
         private async void TextBox3_TextChangedAsync(object sender, EventArgs e)
@@ -237,15 +241,22 @@ namespace VideoToImages
             var ytId = linkParts[3];
 
             var client = new YoutubeClient();
-            var streamInfoSet = await client.GetVideoMediaStreamInfosAsync(ytId);
-            if (streamInfoSet == null)
+            try
+            {
+                var streamManifest = await client.Videos.Streams.GetManifestAsync(ytId);
+                if (streamManifest == null)
+                {
+                    return;
+                }
+                comboBox1.Items.AddRange(streamManifest.GetVideoOnly()
+               .Where(s => s.Container == YoutubeExplode.Videos.Streams.Container.Mp4)
+                    .Select(v => $"{v.Resolution.Height.ToString()}p {v.Framerate}").ToArray());
+                comboBox1.SelectedIndex = 0;
+            }
+            catch
             {
                 return;
             }
-            comboBox1.Items.AddRange(streamInfoSet.Video
-                .Where(v => v.Container == YoutubeExplode.Models.MediaStreams.Container.Mp4)
-                .Select(v => $"{v.Resolution.Height.ToString()}p {v.Framerate} fps").ToArray());
-            comboBox1.SelectedIndex = 0;
         }
     }
 }
