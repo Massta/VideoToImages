@@ -180,6 +180,17 @@ namespace VideoToImages
             }
         }
 
+        private string GetYoutubeIdFromLink(string link)
+        {
+            var firstLink = link;
+            var linkParts = firstLink.Split(new string[] { "?v=" }, StringSplitOptions.None);
+            if (linkParts.Length < 2)
+            {
+                throw new Exception("Couldn't find ID for video "+link);
+            }
+            return linkParts[1];
+        }
+
         private async void Button4_ClickAsync(object sender, EventArgs e)
         {
             var links = textBox3.Lines;
@@ -188,12 +199,7 @@ namespace VideoToImages
                 return;
             }
             var firstLink = links[0];
-            var linkParts = firstLink.Split("?v=".ToCharArray());
-            if (linkParts.Length < 2)
-            {
-                return;
-            }
-            var ytId = linkParts[3];
+            var ytId = GetYoutubeIdFromLink(firstLink);
 
             var client = new YoutubeClient();
             var streamManifest = await client.Videos.Streams.GetManifestAsync(ytId);
@@ -233,12 +239,7 @@ namespace VideoToImages
                 return;
             }
             var firstLink = links[0];
-            var linkParts = firstLink.Split("?v=".ToCharArray());
-            if (linkParts.Length < 2)
-            {
-                return;
-            }
-            var ytId = linkParts[3];
+            var ytId = GetYoutubeIdFromLink(firstLink);
 
             var client = new YoutubeClient();
             try
